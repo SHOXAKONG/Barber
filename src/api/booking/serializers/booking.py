@@ -1,0 +1,63 @@
+from rest_framework import serializers
+from django.utils import timezone
+from src.apps.booking.models import Booking
+from src.apps.user.models import User
+from .service import ServiceSerializer
+
+
+class BookingSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+    service = ServiceSerializer()
+    start_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
+    end_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
+
+
+    class Meta:
+        model = Booking
+        fields = ['id', 'user', 'service', 'start_time', 'end_time', 'status', 'notes']
+
+
+class BookingCreateSerializer(serializers.ModelSerializer):
+    telegram_id = serializers.IntegerField(write_only=True)
+    start_time = serializers.DateTimeField(input_formats=["%Y-%m-%d %H:%M"])
+
+    class Meta:
+        model = Booking
+        fields = ['telegram_id', 'notes', 'start_time', 'end_time', 'service']
+        read_only_fields = ['end_time']
+
+    def validate(self, data):
+        service = data.get('service')
+        start_time = data.get('start_time')
+
+        if not service or not start_time:
+            raise serializers.ValidationError("Service and start_time are required.")
+
+        if start_time < timezone.now():
+            raise serializers.ValidationError("Cannot book in the past.")
+
+        duration = service.duration
+        end_time = start_time + timezone.timedelta(minutes=duration)
+
+        overlapping_bookings = Booking.objects.filter(
+            start_time__lt=end_time,
+            end_time__gt=start_time
+        ).exists()
+
+        if overlapping_bookings:
+            raise serializers.ValidationError("This time slot is already booked.")
+
+        data['end_time'] = end_time
+        return data
+
+    def create(self, validated_data):
+        telegram_id = self.initial_data.get('telegram_id', None)
+
+        if not telegram_id:
+            raise serializers.ValidationError({"telegram_id": "telegram_id majburiy."})
+
+        user, _ = User.objects.get_or_create(telegram_id=telegram_id)
+        validated_data['user'] = user
+
+        return Booking.objects.create(**validated_data)
+
