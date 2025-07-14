@@ -38,7 +38,9 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return BookingCreateSerializer
+            serializer = BookingCreateSerializer
+            print(serializer.data)
+            return serializer
         return BookingSerializer
 
     def get_queryset(self):
@@ -48,6 +50,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         telegram_id = serializer.validated_data.pop('telegram_id')
         user, _ = User.objects.get_or_create(telegram_id=telegram_id)
         serializer.save(user=user)
+        # print(serializer)
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel_booking(self, request, pk=None):
@@ -160,7 +163,23 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='cancel-day')
     def cancel_day(self, request):
-        if not request.user.is_authenticated or not request.user.is_staff:
+        telegram_id = request.data.get('telegram_id') or request.query_params.get('telegram_id')
+
+        if not telegram_id:
+            return Response(
+                {"error": "telegram_id parametri kerak."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(telegram_id=telegram_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Foydalanuvchi topilmadi."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not user.is_staff:
             return Response(
                 {"error": "Faqat barber yoki admin bu amaliyotni bajarishi mumkin."},
                 status=status.HTTP_403_FORBIDDEN
@@ -170,16 +189,17 @@ class BookingViewSet(viewsets.ModelViewSet):
         reason = request.data.get('reason', 'Barber ushbu kundagi barcha bronlarni bekor qildi.')
 
         if not date_str:
-            return Response({"error": "'date' parametri kerak (format: YYYY-MM-DD)."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "'date' parametri kerak (format: YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        try:
-            target_date = parse_date(date_str)
-            if not target_date:
-                raise ValueError
-        except ValueError:
-            return Response({"error": "Sana formati noto‘g‘ri (YYYY-MM-DD)."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        target_date = parse_date(date_str)
+        if target_date is None:
+            return Response(
+                {"error": "Sana formati noto‘g‘ri (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         bookings = Booking.objects.filter(
             start_time__date=target_date,
@@ -195,31 +215,60 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='cancel-time-range')
     def cancel_time_range(self, request):
-        if not request.user.is_authenticated or not request.user.is_staff:
+        telegram_id = request.query_params.get('telegram_id')
+
+        if not telegram_id:
+            return Response(
+                {"error": "telegram_id parametri kerak."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(telegram_id=telegram_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Foydalanuvchi topilmadi."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not user.is_staff:
             return Response(
                 {"error": "Faqat barber yoki admin bu amaliyotni bajarishi mumkin."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         date_str = request.data.get('date')
-        from_time_str = request.data.get('from_time')  # format: "HH:MM"
-        to_time_str = request.data.get('to_time')      # format: "HH:MM"
-        reason = request.data.get('reason', 'Barber ushbu vaqt oralig‘idagi bronlarni bekor qildi.')
+        from_time_str = request.data.get('from_time')
+        to_time_str = request.data.get('to_time')
+        reason = request.data.get(
+            'reason',
+            'Barber ushbu vaqt oralig‘idagi bronlarni bekor qildi.'
+        )
 
         if not all([date_str, from_time_str, to_time_str]):
-            return Response({"error": "'date', 'from_time', 'to_time' parametrlari kerak."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "'date', 'from_time', 'to_time' parametrlari kerak."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             target_date = parse_date(date_str)
-            from_time = timezone.datetime.strptime(from_time_str, "%H:%M").time()
-            to_time = timezone.datetime.strptime(to_time_str, "%H:%M").time()
+            if not target_date:
+                raise ValueError("Invalid date format")
+            from_time = datetime.datetime.strptime(from_time_str, "%H:%M").time()
+            to_time = datetime.datetime.strptime(to_time_str, "%H:%M").time()
         except ValueError:
-            return Response({"error": "Sana yoki vaqt formati noto‘g‘ri."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Sana yoki vaqt formati noto‘g‘ri."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        start_datetime = timezone.make_aware(timezone.datetime.combine(target_date, from_time))
-        end_datetime = timezone.make_aware(timezone.datetime.combine(target_date, to_time))
+        start_datetime = timezone.make_aware(
+            datetime.datetime.combine(target_date, from_time)
+        )
+        end_datetime = timezone.make_aware(
+            datetime.datetime.combine(target_date, to_time)
+        )
 
         bookings = Booking.objects.filter(
             start_time__gte=start_datetime,
@@ -227,9 +276,37 @@ class BookingViewSet(viewsets.ModelViewSet):
             status=Booking.BookingStatus.CONFIRMED
         )
 
-        count = bookings.update(status=Booking.BookingStatus.CANCELLED, cancel_reason=reason)
+        count = bookings.update(
+            status=Booking.BookingStatus.CANCELLED,
+            cancel_reason=reason
+        )
 
-        return Response({
-            "success": f"{count} ta booking {date_str} {from_time_str}-{to_time_str} oralig‘ida bekor qilindi.",
-            "reason": reason
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "success": f"{count} ta booking {date_str} {from_time_str}-{to_time_str} oralig‘ida bekor qilindi.",
+                "reason": reason
+            },
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['get'], url_path='booking-history')
+    def booking_history(self, request):
+        telegram_id = request.query_params.get('telegram_id')
+
+        if not telegram_id:
+            return Response(
+                {"error": "telegram_id parametri kerak."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(telegram_id=telegram_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Foydalanuvchi topilmadi."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        bookings = Booking.objects.filter(user=user).order_by('-start_time')
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -53,8 +53,9 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan sana / Дата регистрации")
 
     def __str__(self):
-        return f"{self.first_name} - {self.phone_number}"
+        return f"{self.first_name} - {self.phone_number} - {self.telegram_id}"
 
     class Meta(AbstractUser.Meta):
         verbose_name = "Foydalanuvchi / Пользователь"
         verbose_name_plural = "Foydalanuvchilar / Пользователи"
+

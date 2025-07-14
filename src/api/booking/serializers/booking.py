@@ -1,8 +1,10 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone as dj_timezone
 from rest_framework import serializers
-from django.utils import timezone
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from .service import ServiceSerializer
 from src.apps.booking.models import Booking
 from src.apps.user.models import User
-from .service import ServiceSerializer
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -10,7 +12,6 @@ class BookingSerializer(serializers.ModelSerializer):
     service = ServiceSerializer()
     start_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
     end_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
-
 
     class Meta:
         model = Booking
@@ -33,15 +34,16 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         if not service or not start_time:
             raise serializers.ValidationError("Service and start_time are required.")
 
-        if start_time < timezone.now():
+        if start_time < dj_timezone.now():
             raise serializers.ValidationError("Cannot book in the past.")
 
         duration = service.duration
-        end_time = start_time + timezone.timedelta(minutes=duration)
+        end_time = start_time + dj_timezone.timedelta(minutes=duration)
 
         overlapping_bookings = Booking.objects.filter(
             start_time__lt=end_time,
-            end_time__gt=start_time
+            end_time__gt=start_time,
+            status=Booking.BookingStatus.CONFIRMED
         ).exists()
 
         if overlapping_bookings:
@@ -59,5 +61,9 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         user, _ = User.objects.get_or_create(telegram_id=telegram_id)
         validated_data['user'] = user
 
-        return Booking.objects.create(**validated_data)
+        try:
+            booking = Booking.objects.create(**validated_data)
+        except DjangoValidationError as e:
+            raise DRFValidationError(e.messages)
 
+        return booking
