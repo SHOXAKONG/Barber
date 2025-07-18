@@ -31,7 +31,7 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'leaflet',
-    'django.contrib.gis',
+    # 'django.contrib.gis',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'src.config.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": config("DB_NAME"),
         "USER": config("DB_USER"),
         "PASSWORD": config("DB_PASSWORD"),
@@ -131,9 +131,9 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'user.User'
 
-LEAFLET_CONFIG = {
-    'DEFAULT_CENTER': (41.3111, 69.2797),
-    'DEFAULT_ZOOM': 12,
-}
+# LEAFLET_CONFIG = {
+#     'DEFAULT_CENTER': (41.3111, 69.2797),
+#     'DEFAULT_ZOOM': 12,
+# }
 
 TELEGRAM_BOT_API_KEY=config('TELEGRAM_BOT_API_KEY')
