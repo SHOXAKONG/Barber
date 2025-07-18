@@ -43,7 +43,9 @@ class Booking(BaseModel):
     cancel_reason = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.user} uchun {self.service.name if self.service else 'Noma\'lum xizmat'} - {self.start_time.strftime('%Y-%m-%d %H:%M')}"
+        service_display = self.service.name if self.service else "Noma'lum xizmat"
+        time_display = self.start_time.strftime('%Y-%m-%d %H:%M')
+        return f"{self.user} uchun {service_display} - {time_display}"
 
     def clean(self):
         if not (self.start_time and self.service):
