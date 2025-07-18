@@ -23,7 +23,7 @@ RUN pip install -r requirements.txt && \
 COPY . /app
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoints.sh
 ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 8001
