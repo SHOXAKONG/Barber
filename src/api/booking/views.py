@@ -82,9 +82,10 @@ class BookingViewSet(viewsets.ModelViewSet):
         if booking.status == Booking.BookingStatus.CANCELLED:
             return Response({'error': 'Booking allaqachon bekor qilingan.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking.status = Booking.BookingStatus.CANCELLED
-        booking.cancel_reason = cancel_reason
-        booking.save()
+        Booking.objects.filter(id=booking.id).update(
+            status=Booking.BookingStatus.CANCELLED,
+            cancel_reason=cancel_reason
+        )
 
         return Response(
             {'success': f"Booking #{booking.id} muvaffaqiyatli bekor qilindi."},
