@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'src.apps.booking',
     'src.apps.service',
     'src.apps.user',
+    'src.apps.breakes',
 ]
 
 MIDDLEWARE = [

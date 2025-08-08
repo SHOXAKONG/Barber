@@ -7,7 +7,7 @@ class Break(models.Model):
     end_time = models.DateTimeField()
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     reason = models.TextField()
-
+    telegram_id = models.IntegerField()
     @property
     def is_expired(self):
         return timezone.now() > self.end_time

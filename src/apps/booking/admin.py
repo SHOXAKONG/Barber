@@ -8,4 +8,4 @@ class WorkingHoursAdmin(admin.ModelAdmin):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('user', 'service', 'start_time', 'end_time', 'status', 'notes', 'cancel_reason')
+    list_display = ('user', 'start_time', 'end_time', 'status', 'notes', 'cancel_reason')

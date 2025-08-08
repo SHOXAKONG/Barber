@@ -20,13 +20,6 @@ class Booking(BaseModel):
         verbose_name="Mijoz"
     )
 
-    service = models.ForeignKey(
-        Service,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='bookings',
-        verbose_name="Xizmat"
-    )
 
     start_time = models.DateTimeField(verbose_name="Boshlanish vaqti")
     end_time = models.DateTimeField(verbose_name="Tugash vaqti", blank=True)

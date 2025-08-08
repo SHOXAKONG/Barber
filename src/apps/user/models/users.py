@@ -43,7 +43,7 @@ class User(AbstractUser):
 
     objects = UserManager()
 
-    name = models.CharField(null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
 
     rating = models.FloatField(null=True, blank=True)
 
