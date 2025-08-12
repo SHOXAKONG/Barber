@@ -6,8 +6,12 @@ from rest_framework.response import Response
 from src.apps.user.models import User
 from src.apps.booking.models import WorkingHours, Booking
 from src.apps.user.models import User
-from .serializers import WorkingHoursSerializer
+from src.apps.service.models import Service
+from src.apps.breakes.models import Break
+from .serializers import WorkingHoursSerializer, BookingCreateSerializer, BookingQuerySerializer
 from django.shortcuts import get_object_or_404
+from .utils import is_slot_free
+from datetime import date, datetime
 
 class WorkingHoursViewSet(viewsets.GenericViewSet):
     queryset = WorkingHours.objects.all()
@@ -15,7 +19,6 @@ class WorkingHoursViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_path='(?P<telegram_id>[^/.]+)')
     def get_barber_working_hours(self, request, telegram_id=None):
-
         barber = User.objects.get(telegram_id = telegram_id)
 
         working_hours = WorkingHours.objects.filter(barber = barber)
@@ -23,9 +26,144 @@ class WorkingHoursViewSet(viewsets.GenericViewSet):
         serializer = WorkingHoursSerializer(working_hours, many = True)
         return Response(serializer.data)
 
+class BookingViewSet(viewsets.GenericViewSet):
+    queryset = Booking.objects.all()
+    serializer_class = BookingCreateSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = serializer.save()
+        return self.get_response(booking)
 
+    def get_response(self, booking):
+        return Response(
+            {
+                "id": booking.id,
+                "message": "Booking successfully created",
+                "start_time": booking.start_time,
+                "end_time": booking.end_time,
+                "barber": booking.barber_id,
+                "service": booking.service_id,
+            },
+            status=201
+        )
+        
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel_booking(self, request, pk=None):
+        try:
+            booking = self.get_object()
+        except Booking.DoesNotExist:
+            return Response({'error': 'Booking topilmadi.'}, status=status.HTTP_404_NOT_FOUND)
 
+        telegram_id = request.data.get('telegram_id')
+        cancel_reason = request.data.get('cancel_reason')
+
+        if not telegram_id:
+            return Response(
+                {'error': 'telegram_id yuborilishi shart.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not cancel_reason:
+            return Response(
+                {'error': 'cancel_reason yuborilishi shart.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if str(booking.user.telegram_id) != str(telegram_id):
+            return Response(
+                {'error': 'Siz faqat o‘zingizning booking’ni bekor qilishingiz mumkin.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if booking.status == Booking.BookingStatus.CANCELLED:
+            return Response({'error': 'Booking allaqachon bekor qilingan.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        Booking.objects.filter(id=booking.id).update(
+            status=Booking.BookingStatus.CANCELLED,
+            cancel_reason=cancel_reason
+        )
+
+        return Response(
+            {'success': f"Booking #{booking.id} muvaffaqiyatli bekor qilindi."},
+            status=status.HTTP_200_OK
+        )
+    
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path=r'available-slots/(?P<date>\d{4}-\d{2}-\d{2})/(?P<barber_id>\d+)/(?P<service_id>\d+)'
+    )
+    def available_slots(self, request, date=None, barber_id=None, service_id=None):
+        data = {
+            "date": date,
+            "barber_id": barber_id,
+            "service_id": service_id,
+        }
+        serializer = BookingQuerySerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        date = validated["date"]
+        barber_id = validated["barber_id"]
+        service_id = validated["service_id"]
+
+        if not date or not service_id or not barber_id:
+            return Response({"error": "barber_id, date and service_id are required"}, status=400)
+
+        service = get_object_or_404(Service, pk=service_id)
+        duration = timedelta(minutes=service.duration_minutes)
+
+        working_hours = get_object_or_404(
+            WorkingHours, barber_id=barber_id, weekday=date.weekday()
+        )
+
+        start = datetime.combine(date, working_hours.from_hour)
+        end = datetime.combine(date, working_hours.to_hour)
+
+        breaks = Break.objects.filter(
+            barber_id=barber_id,
+            start_time__date=date
+        )
+
+        bookings = Booking.objects.filter(
+            barber_id=barber_id,
+            start_time__date=date
+        )
+
+        available_slots = []
+        current = start
+
+        while current + duration <= end:
+            slot_end = current + duration
+
+            if is_slot_free(current, slot_end, breaks, bookings):
+                available_slots.append(current.strftime("%H:%M"))
+            current += timedelta(minutes=5)
+
+        return Response({"available_slots": available_slots})
+
+    @action(detail=False, methods=['get'], url_path='booking-history')
+    def booking_history(self, request):
+        telegram_id = request.query_params.get('telegram_id')
+
+        if not telegram_id:
+            return Response(
+                {"error": "telegram_id parametri kerak."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(telegram_id=telegram_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Foydalanuvchi topilmadi."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        bookings = Booking.objects.filter(user=user).order_by('-start_time')
+        serializer = BookingCreateSerializer(bookings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # from .serializers import (

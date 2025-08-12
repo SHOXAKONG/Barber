@@ -4,6 +4,7 @@ from . import views
 
 router = DefaultRouter()
 router.register('working-hours', views.WorkingHoursViewSet, 'working-hours')
+router.register('', views.BookingViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

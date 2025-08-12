@@ -9,6 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
+from rest_framework import status
 
 class ServiceTypeViewSet(viewsets.ModelViewSet):
     queryset = ServiceType.objects.all()
@@ -75,6 +76,17 @@ class ServiceTypeViewSet(viewsets.ModelViewSet):
 
         serializer = ServiceTypeSerializer(servicetypes, many=True)
         return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_summary="Barcha service turlari va ularning xizmatlarini olish",
+        operation_description="Barcha ServiceType obyektlari va ular bilan bog'liq Service lar ro'yxatini olish.",
+        responses={200: ServiceTypeSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'], url_path='all-services/(?P<barber_id>[^/.]+)')
+    def get_all_services(self, request, barber_id=None):
+        queryset = ServiceType.objects.filter(barber_id=barber_id).prefetch_related('services')
+        serializer = ServiceTypeSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
