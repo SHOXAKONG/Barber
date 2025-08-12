@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'src.apps.notification',
     'src.apps.booking',
     'src.apps.service',
+    'src.apps.breakes',
     'src.apps.user',
 ]
 

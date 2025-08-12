@@ -20,7 +20,7 @@ class RegisterViewSet(viewsets.GenericViewSet):
         serializer.save()
         return Response({"message": "Registered Successfully"}, status=status.HTTP_201_CREATED)
 
-class UsersViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.all()
 
     def get_serializer_class(self, *args, **kwargs):
@@ -36,6 +36,12 @@ class UsersViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
     @action(methods=['get'], detail=False, url_path='is_staff')
     def is_staff(self, request):
         queryset = User.objects.filter(is_staff=True)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(methods=['get'], detail=False)
+    def get_barbers(self, request):
+        queryset = User.objects.filter(roles__name = 'Barber')
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
