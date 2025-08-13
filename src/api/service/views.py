@@ -10,8 +10,9 @@ from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.mixins import DestroyModelMixin, ListModelMixin
 
-class ServiceTypeViewSet(viewsets.ModelViewSet):
+class ServiceTypeViewSet(viewsets.GenericViewSet):
     queryset = ServiceType.objects.all()
     serializer_class = ServiceTypeSerializer
 
@@ -60,8 +61,11 @@ class ServiceTypeViewSet(viewsets.ModelViewSet):
         operation_description="ServiceType obyektini o'chirish (ID bo'yicha).",
         responses={204: 'Successfully deleted'}
     )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+    @action(detail=True, methods=['delete'], url_path='delete')
+    def delete_service_type(self, request, pk=None):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     @swagger_auto_schema(
         operation_summary="Barberning service larini olish uchun!",
