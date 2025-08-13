@@ -61,7 +61,7 @@ class ServiceTypeViewSet(viewsets.GenericViewSet):
         operation_description="ServiceType obyektini o'chirish (ID bo'yicha).",
         responses={204: 'Successfully deleted'}
     )
-    @action(detail=True, methods=['delete'], url_path='delete')
+    @action(detail=True, methods=['delete'])
     def delete_service_type(self, request, pk=None):
         instance = self.get_object()
         instance.delete()
