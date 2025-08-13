@@ -3,4 +3,4 @@ from .models import Break
 # Register your models here.
 @admin.register(Break)
 class BreakAdmin(admin.ModelAdmin):
-    list_display = ('__str__','start_time', 'end_time', 'user_id', 'reason')
+    list_display = ('__str__','start_time', 'end_time', 'barber', 'reason')
