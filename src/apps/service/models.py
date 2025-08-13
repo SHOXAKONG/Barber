@@ -11,11 +11,11 @@ class ServiceType(models.Model):
         return self.name
 
 class Service(models.Model):
-    service_type = models.ForeignKey(ServiceType, on_delete=models.CASCADE, related_name='services', null=True, blank=True)
+    service_type = models.ForeignKey(ServiceType, on_delete=models.CASCADE, related_name='services')
     name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
+    description = models.TextField(null=True, blank=True)
     duration = models.DurationField(default=timedelta(minutes=30))
-    price = models.PositiveIntegerField()
+    price = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.service_type.name})"
