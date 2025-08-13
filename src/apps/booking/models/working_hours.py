@@ -28,7 +28,7 @@ class WorkingHours(BaseModel):
         (6, "Yakshanba"),
     ]
 
-    weekday = models.IntegerField(choices=WEEKDAYS, unique=True)
+    weekday = models.IntegerField(choices=WEEKDAYS)
 
     from_hour = models.TimeField()
     to_hour = models.TimeField()

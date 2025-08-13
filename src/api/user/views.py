@@ -58,22 +58,17 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
 
         user = get_object_or_404(User, phone_number=phone_number)
         role = serializer.validated_data['role']
-        
-        from_hour = serializer.validated_data.get('default_from_hour')
-        to_hour = serializer.validated_data.get('default_to_hour')
-        if from_hour and to_hour:
-            defaults = {"barber": user, "from_hour": from_hour, "to_hour": to_hour}
 
-            if not WorkingHours.objects.filter(barber=user).exists():
-                WorkingHours.objects.bulk_create(
-                    [WorkingHours(weekday=i, **defaults) for i in range(7)]
-                )
-        else:
-            defaults = {"barber": user, "from_hour": user.default_from_hour, "to_hour": user.default_to_hour}
-            if not WorkingHours.objects.filter(barber=user).exists():
-                WorkingHours.objects.bulk_create(
-                    [WorkingHours(weekday=i, **defaults) for i in range(7)]
-                )
+        if role.name.lower() == 'barber':
+            from_hour = serializer.validated_data.get('default_from_hour') or user.default_from_hour
+            to_hour = serializer.validated_data.get('default_to_hour') or user.default_to_hour
+
+            WorkingHours.objects.filter(barber=user).delete()
+
+            defaults = {"barber": user, "from_hour": from_hour, "to_hour": to_hour}
+            WorkingHours.objects.bulk_create(
+                [WorkingHours(weekday=i, **defaults) for i in range(7)]
+            )
 
         user.roles.add(role)
         return Response({'status': 'Role added'}, status=status.HTTP_200_OK)
@@ -85,7 +80,8 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
 
         user = get_object_or_404(User, phone_number=phone_number)
         role = serializer.validated_data.get('role')
-        if role.name == 'Barber':
+
+        if role.name.lower() == 'barber':
             WorkingHours.objects.filter(barber=user).delete()
 
         user.roles.remove(role)
