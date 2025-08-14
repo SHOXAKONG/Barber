@@ -63,11 +63,11 @@ class Booking(BaseModel):
 
         working_start = timezone.make_aware(
             datetime.combine(self.start_time.date(), working_hours.from_hour),
-            tzinfo=tashkent_tz
+            timezone=tashkent_tz
         )
         working_end = timezone.make_aware(
             datetime.combine(self.start_time.date(), working_hours.to_hour),
-            tzinfo=tashkent_tz
+            timezone=tashkent_tz
         )
 
         if not (working_start <= self.start_time and self.end_time <= working_end):
@@ -80,20 +80,22 @@ class Booking(BaseModel):
             duration = timedelta(minutes=self.service.duration_minutes)
             self.end_time = self.start_time + duration
 
-        min_allowed_date = now + timedelta(days=30)
-        if self.start_time < min_allowed_date:
-            raise ValidationError("30 kundan otib ketdi")
+        print(now)
+        print(self.start_time)
+        max_allowed_date = now + timedelta(days=30)
+        if self.start_time > max_allowed_date:
+            raise ValidationError("30 kundan otib ketdi!")
 
         if self.start_time < now:
             raise ValidationError("O'tmishdagi kunga bron qila olmaysiz.")
 
         day_start = timezone.make_aware(
             datetime.combine(self.start_time.date(), time.min),
-            tzinfo=tashkent_tz
+            timezone=tashkent_tz
         )
         day_end = timezone.make_aware(
             datetime.combine(self.start_time.date(), time.max),
-            tzinfo=tashkent_tz
+            timezone=tashkent_tz
         )
 
         breaks = Break.objects.filter(
