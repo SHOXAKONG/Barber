@@ -14,3 +14,15 @@ class UserSerializer(serializers.ModelSerializer):
                   'rating',
                   'default_from_hour',
                   'default_to_hour', 'roles']
+        
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+                  'first_name',
+                  'phone_number',
+                  'language',
+                  'photo',
+                  'description',
+                  'default_from_hour',
+                  'default_to_hour']

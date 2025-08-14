@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, UserSerializer, UpdateRoleSerializer, RolesSerializer
+from .serializers import RegisterSerializer, UserSerializer, UpdateRoleSerializer, RolesSerializer, UserUpdateSerializer
 from src.apps.user.models import User, Roles
 from src.apps.booking.models import WorkingHours
 from django.shortcuts import get_object_or_404
@@ -32,22 +32,19 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-    @action(methods=['get'], detail=False, url_path='is_staff')
-    def is_staff(self, request):
-        queryset = User.objects.filter(is_staff=True)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
     
-    @action(methods=['get'], detail=False)
-    def get_barbers(self, request):
-        queryset = User.objects.filter(roles__name = 'Barber')
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @action(methods=['get'], detail=False, url_path='client')
-    def client(self, request):
-        queryset = User.objects.filter(is_staff=False)
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(methods=['get'], detail=False, url_path=r'by-role/(?P<role_id>[^/.]+)')
+    def by_role(self, request, role_id=None):
+        role_id = role_id
+        role = get_object_or_404(Roles, id = role_id)
+        queryset = User.objects.filter(roles__name = role.name)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
