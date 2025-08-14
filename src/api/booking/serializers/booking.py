@@ -2,6 +2,17 @@ from rest_framework import serializers
 from src.apps.booking.models import Booking
 from src.apps.service.models import Service
 
+class BookingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Booking
+        fields = [
+            "user",
+            "barber",
+            "service",
+            "start_time",
+            "end_time",
+        ]
+
 class BookingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking

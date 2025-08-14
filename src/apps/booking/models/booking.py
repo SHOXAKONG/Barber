@@ -80,8 +80,6 @@ class Booking(BaseModel):
             duration = timedelta(minutes=self.service.duration_minutes)
             self.end_time = self.start_time + duration
 
-        print(now)
-        print(self.start_time)
         max_allowed_date = now + timedelta(days=30)
         if self.start_time > max_allowed_date:
             raise ValidationError("30 kundan otib ketdi!")
