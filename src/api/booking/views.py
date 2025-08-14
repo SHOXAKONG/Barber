@@ -145,9 +145,9 @@ class BookingViewSet(viewsets.GenericViewSet):
 
         return Response({"available_slots": available_slots})
 
-    @action(detail=False, methods=['get'], url_path='booking-history')
-    def booking_history(self, request):
-        telegram_id = request.query_params.get('telegram_id')
+    @action(detail=False, methods=['get'], url_path='booking-history/(?P<telegram_id>[^/.]+)')
+    def booking_history(self, request, telegram_id=None):
+        telegram_id = telegram_id
 
         if not telegram_id:
             return Response(
