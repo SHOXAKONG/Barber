@@ -15,7 +15,7 @@ from rest_framework.mixins import DestroyModelMixin, ListModelMixin
 class ServiceTypeViewSet(viewsets.ModelViewSet):
     queryset = ServiceType.objects.all()
     serializer_class = ServiceTypeSerializer
-
+    
     @swagger_auto_schema(
         operation_summary="Get barber's service types",
         operation_description="Return all ServiceType objects for a barber by telegram_id",
@@ -27,16 +27,6 @@ class ServiceTypeViewSet(viewsets.ModelViewSet):
         servicetypes = ServiceType.objects.filter(barber=barber)
         serializer = ServiceTypeSerializer(servicetypes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    # @swagger_auto_schema(
-    #     operation_summary="Get all services for a barber",
-    #     operation_description="Return all ServiceType objects and their related services for a barber by ID",
-    #     responses={200: ServiceTypeSerializer(many=True)}
-    # )
-    # @action(detail=False, methods=['get'], url_path='all-services/(?P<barber_id>[^/.]+)')
-    # def get_all_services(self, request, barber_id=None):
-    #     queryset = ServiceType.objects.filter(barber_id=barber_id).prefetch_related('services')
-    #     serializer = ServiceTypeSerializer(queryset, many=True)
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
     
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()

@@ -19,6 +19,11 @@ class Service(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.service_type.name})"
+    
+    @property
+    def duration_minutes(self):
+        return int(self.duration.total_seconds() // 60)
+    
 
     class Meta:
         db_table = 'service'

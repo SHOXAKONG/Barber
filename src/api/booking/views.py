@@ -110,8 +110,10 @@ class BookingViewSet(viewsets.GenericViewSet):
 
         if not date or not service_id or not barber_id:
             return Response({"error": "barber_id, date and service_id are required"}, status=400)
-
+        
+        barber = get_object_or_404(User, pk=barber_id)
         service = get_object_or_404(Service, pk=service_id)
+
         duration = timedelta(minutes=service.duration_minutes)
 
         working_hours = get_object_or_404(
@@ -139,7 +141,7 @@ class BookingViewSet(viewsets.GenericViewSet):
 
             if is_slot_free(current, slot_end, breaks, bookings):
                 available_slots.append(current.strftime("%H:%M"))
-            current += timedelta(minutes=5)
+            current += duration
 
         return Response({"available_slots": available_slots})
 
