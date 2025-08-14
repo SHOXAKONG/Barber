@@ -4,7 +4,6 @@ from django.core.validators import RegexValidator
 from datetime import time
 from django.db import models
 from .roles import Roles
-from .buttons import Button
 
 class UserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
@@ -57,8 +56,6 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan sana / Дата регистрации")
 
     roles = models.ManyToManyField(Roles)
-
-    buttons = models.ManyToManyField(Button)
 
     default_from_hour = models.TimeField(default=time(9, 0))  
     default_to_hour = models.TimeField(default=time(18, 0)) 
