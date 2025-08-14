@@ -26,6 +26,8 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
     def get_serializer_class(self, *args, **kwargs):
         if self.action in ['add_role', 'remove_role']:
             return UpdateRoleSerializer
+        elif self.action == 'partial_update':
+            return UserUpdateSerializer
         return UserSerializer
 
     def list(self, request):
