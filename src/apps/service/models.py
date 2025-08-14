@@ -8,7 +8,7 @@ class ServiceType(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.barber})"
 
 class Service(models.Model):
     service_type = models.ForeignKey(ServiceType, on_delete=models.CASCADE, related_name='services')
