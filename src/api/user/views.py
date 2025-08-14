@@ -24,7 +24,7 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
     queryset = User.objects.all()
 
     def get_serializer_class(self, *args, **kwargs):
-        if self.action in ['partial_update', 'patch', 'add_role', 'remove_role']:
+        if self.action in ['add_role', 'remove_role']:
             return UpdateRoleSerializer
         return UserSerializer
 
@@ -89,19 +89,19 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         user = get_object_or_404(User, telegram_id=telegram_id)
         return Response(UserSerializer(user).data)
     
-class UpdateViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    queryset = User.objects.all()
-    lookup_field = 'telegram_id'
+# class UpdateViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
+#     queryset = User.objects.all()
+#     lookup_field = 'telegram_id'
 
-    def get_object(self):
-        telegram_id = self.kwargs.get('telegram_id')
-        return User.objects.get(telegram_id=telegram_id)
+#     def get_object(self):
+#         telegram_id = self.kwargs.get('telegram_id')
+#         return User.objects.get(telegram_id=telegram_id)
         
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+#     def partial_update(self, request, *args, **kwargs):
+#         return super().partial_update(request, *args, **kwargs)
 
-    def retrieve(self, request):
-        pass
+#     def retrieve(self, request):
+#         pass
 
 class RolesViewSet(viewsets.GenericViewSet):
     queryset = Roles.objects.all()

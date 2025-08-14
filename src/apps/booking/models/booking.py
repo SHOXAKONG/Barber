@@ -52,14 +52,23 @@ class Booking(BaseModel):
     def clean(self):
         super().clean()
 
+        tashkent_tz = pytz.timezone('Asia/Tashkent')
+        now = timezone.now().astimezone(tashkent_tz)
+
         weekday = self.start_time.weekday()
         try:
             working_hours = WorkingHours.objects.get(barber=self.barber, weekday=weekday)
         except WorkingHours.DoesNotExist:
             raise ValidationError("Barber bu soatlarda ishlamaydi.")
 
-        working_start = datetime.combine(self.start_time.date(), working_hours.from_hour)
-        working_end = datetime.combine(self.start_time.date(), working_hours.to_hour)
+        working_start = timezone.make_aware(
+            datetime.combine(self.start_time.date(), working_hours.from_hour),
+            tzinfo=tashkent_tz
+        )
+        working_end = timezone.make_aware(
+            datetime.combine(self.start_time.date(), working_hours.to_hour),
+            tzinfo=tashkent_tz
+        )
 
         if not (working_start <= self.start_time and self.end_time <= working_end):
             raise ValidationError("Booking must be within the barber's working hours.")
@@ -75,13 +84,17 @@ class Booking(BaseModel):
         if self.start_time < min_allowed_date:
             raise ValidationError("30 kundan otib ketdi")
 
-        tashkent_tz = pytz.timezone('Asia/Tashkent')
-        now = datetime.now(tashkent_tz)
         if self.start_time < now:
             raise ValidationError("O'tmishdagi kunga bron qila olmaysiz.")
 
-        day_start = datetime.combine(self.start_time.date(), time.min)
-        day_end = datetime.combine(self.start_time.date(), time.max)
+        day_start = timezone.make_aware(
+            datetime.combine(self.start_time.date(), time.min),
+            tzinfo=tashkent_tz
+        )
+        day_end = timezone.make_aware(
+            datetime.combine(self.start_time.date(), time.max),
+            tzinfo=tashkent_tz
+        )
 
         breaks = Break.objects.filter(
             barber=self.barber,
