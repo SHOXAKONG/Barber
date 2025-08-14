@@ -18,12 +18,11 @@ class Service(models.Model):
     price = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.name} ({self.service_type.name})"
+        return f"{self.name} ({self.service_type.name}): - {self.service_type.barber}"
     
     @property
     def duration_minutes(self):
         return int(self.duration.total_seconds() // 60)
     
-
     class Meta:
         db_table = 'service'
