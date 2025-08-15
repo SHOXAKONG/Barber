@@ -13,4 +13,4 @@ class Break(models.Model):
         return timezone.now() > self.end_time
 
     def __str__(self):
-        return f'{self.barber.name}: {self.start_time} - {self.end_time}'
+        return f'{self.barber.first_name}: {self.start_time} - {self.end_time}'
