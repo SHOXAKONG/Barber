@@ -2,6 +2,8 @@ from rest_framework import serializers
 from src.apps.user.models import User
 
 class UserSerializer(serializers.ModelSerializer):
+    total_bookings = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = User
         fields = ['id',
@@ -13,7 +15,9 @@ class UserSerializer(serializers.ModelSerializer):
                   'description',
                   'rating',
                   'default_from_hour',
-                  'default_to_hour', 'roles']
+                  'default_to_hour',
+                  'roles',
+                  'total_bookings']
         
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:

@@ -9,7 +9,7 @@ from src.apps.user.models import User, Roles
 from src.apps.booking.models import WorkingHours
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
-from django.db.models import Count
+from django.db.models import Count, Q
 
 class RegisterViewSet(viewsets.GenericViewSet):
     serializer_class = RegisterSerializer
@@ -48,9 +48,16 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         role_id = role_id
         role = get_object_or_404(Roles, id = role_id)
         if role.name == 'Client':
-            queryset = User.objects.annotate(num_roles=Count('roles')).filter(num_roles=1, roles__name='Client')
+            queryset = User.objects.annotate(
+                num_roles=Count('roles', distinct=True),
+                total_bookings=Count('bookings', filter=Q(bookings__status='COMPLETED'), distinct=True)
+            ).filter(
+                num_roles=1,
+                roles__name='Client'
+            )
         else:
             queryset = User.objects.filter(roles__name = role.name)
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
