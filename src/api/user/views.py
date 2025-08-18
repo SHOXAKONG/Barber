@@ -47,28 +47,15 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
     def by_role(self, request, role_id=None):
         role_id = role_id
         role = get_object_or_404(Roles, id = role_id)
-        if role.name == 'Client':
+        if role.name == 'Client' or role.name=='BAN':
             queryset = User.objects.annotate(
                 num_roles=Count('roles', distinct=True),
                 total_bookings=Count('bookings', filter=Q(bookings__status='COMPLETED'), distinct=True)
-            ).filter(
-                num_roles=1,
-                roles__name='Client'
-            )
+                ).filter(roles__id=2).filter(
+                    Q(num_roles=1) | (Q(num_roles=2) & Q(roles__id=5))
+                ).distinct()
         else:
             queryset = User.objects.filter(roles__name = role.name)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-    
-    @action(methods=['get'], detail=False)
-    def get_client_and_ban(self, request):
-        queryset = User.objects.annotate(
-            num_roles=Count('roles', distinct=True),
-            total_bookings=Count('bookings', filter=Q(bookings__status='COMPLETED'), distinct=True)
-            ).filter(roles__id=2).filter(
-                Q(num_roles=1) | (Q(num_roles=2) & Q(roles__id=5))
-            ).distinct()
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
