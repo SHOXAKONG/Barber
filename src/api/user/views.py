@@ -61,6 +61,18 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
+    @action(methods=['get'], detail=False)
+    def get_client_and_ban(self, request):
+        queryset = User.objects.annotate(
+            num_roles=Count('roles', distinct=True),
+            total_bookings=Count('bookings', filter=Q(bookings__status='COMPLETED'), distinct=True)
+            ).filter(roles__id=2).filter(
+                Q(num_roles=1) | (Q(num_roles=2) & Q(roles__id=5))
+            ).distinct()
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
     @action(detail=False, methods=['patch'], url_path=r'add_role/(?P<phone_number>[^/.]+)')
     def add_role(self, request, phone_number=None):
         serializer = self.get_serializer(data=request.data)
