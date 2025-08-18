@@ -6,6 +6,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
+            "id",
             "user",
             "barber",
             "service",
@@ -18,6 +19,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
+            "id",
             "user",
             "barber",
             "service",
