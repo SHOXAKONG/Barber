@@ -12,5 +12,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_telegram_id(self, value):
         if User.objects.filter(telegram_id=value).exists():
-            raise serializers.ValidationError("This user already exist")
+            raise serializers.ValidationError("This user already exist!")
         return value
+    
+    def save(self, **kwargs):
+        return User.objects.create_user(**self.validated_data)

@@ -4,12 +4,27 @@ from django.core.validators import RegexValidator
 from datetime import time
 from django.db import models
 from .roles import Roles
-from .buttons import Button
+import re
+from django.core.exceptions import ValidationError
 
 class UserManager(BaseUserManager):
+    def validate_phone_number(self, phone_number):
+        phone_number = re.sub(r'[\s\-\(\)]', '', phone_number)
+
+        if phone_number.startswith('998'):
+            phone_number = '+' + phone_number
+        elif not phone_number.startswith('+998'):
+            raise ValidationError("Phone number must start with +998")
+
+        if not re.fullmatch(r'^\+998\d{9}$', phone_number):
+            raise ValidationError("Invalid Uzbekistan phone number format.")
+
+        return phone_number
+    
     def create_user(self, phone_number, password=None, **extra_fields):
         if not phone_number:
             raise ValueError('The Phone Number must be set')
+        phone_number = self.validate_phone_number(phone_number)
         user = self.model(phone_number=phone_number, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -57,8 +72,6 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan sana / Дата регистрации")
 
     roles = models.ManyToManyField(Roles)
-
-    buttons = models.ManyToManyField(Button)
 
     default_from_hour = models.TimeField(default=time(9, 0))  
     default_to_hour = models.TimeField(default=time(18, 0)) 

@@ -4,11 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, UserSerializer, UpdateRoleSerializer, RolesSerializer
+from .serializers import RegisterSerializer, UserSerializer, UpdateRoleSerializer, RolesSerializer, UserUpdateSerializer
 from src.apps.user.models import User, Roles
 from src.apps.booking.models import WorkingHours
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
+from django.db.models import Count, Q
 
 class RegisterViewSet(viewsets.GenericViewSet):
     serializer_class = RegisterSerializer
@@ -24,30 +25,38 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
     queryset = User.objects.all()
 
     def get_serializer_class(self, *args, **kwargs):
-        if self.action in ['partial_update', 'patch', 'add_role', 'remove_role']:
+        if self.action in ['add_role', 'remove_role']:
             return UpdateRoleSerializer
+        elif self.action == 'partial_update':
+            return UserUpdateSerializer
         return UserSerializer
 
     def list(self, request):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-    @action(methods=['get'], detail=False, url_path='is_staff')
-    def is_staff(self, request):
-        queryset = User.objects.filter(is_staff=True)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
     
-    @action(methods=['get'], detail=False)
-    def get_barbers(self, request):
-        queryset = User.objects.filter(roles__name = 'Barber')
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(methods=['get'], detail=False, url_path=r'by-role/(?P<role_id>[^/.]+)')
+    def by_role(self, request, role_id=None):
+        role_id = role_id
+        role = get_object_or_404(Roles, id = role_id)
+        if role.name == 'Client' or role.name=='BAN':
+            queryset = User.objects.annotate(
+                num_roles=Count('roles', distinct=True),
+                total_bookings=Count('bookings', filter=Q(bookings__status='COMPLETED'), distinct=True)
+                ).filter(roles__id=2).filter(
+                    Q(num_roles=1) | (Q(num_roles=2) & Q(roles__id=5))
+                ).distinct()
+        else:
+            queryset = User.objects.filter(roles__name = role.name)
 
-    @action(methods=['get'], detail=False, url_path='client')
-    def client(self, request):
-        queryset = User.objects.filter(is_staff=False)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
@@ -58,22 +67,17 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
 
         user = get_object_or_404(User, phone_number=phone_number)
         role = serializer.validated_data['role']
-        
-        from_hour = serializer.validated_data.get('default_from_hour')
-        to_hour = serializer.validated_data.get('default_to_hour')
-        if from_hour and to_hour:
-            defaults = {"barber": user, "from_hour": from_hour, "to_hour": to_hour}
 
-            if not WorkingHours.objects.filter(barber=user).exists():
-                WorkingHours.objects.bulk_create(
-                    [WorkingHours(weekday=i, **defaults) for i in range(7)]
-                )
-        else:
-            defaults = {"barber": user, "from_hour": user.default_from_hour, "to_hour": user.default_to_hour}
-            if not WorkingHours.objects.filter(barber=user).exists():
-                WorkingHours.objects.bulk_create(
-                    [WorkingHours(weekday=i, **defaults) for i in range(7)]
-                )
+        if role.name.lower() == 'barber':
+            from_hour = serializer.validated_data.get('default_from_hour') or user.default_from_hour
+            to_hour = serializer.validated_data.get('default_to_hour') or user.default_to_hour
+
+            WorkingHours.objects.filter(barber=user).delete()
+
+            defaults = {"barber": user, "from_hour": from_hour, "to_hour": to_hour}
+            WorkingHours.objects.bulk_create(
+                [WorkingHours(weekday=i, **defaults) for i in range(7)]
+            )
 
         user.roles.add(role)
         return Response({'status': 'Role added'}, status=status.HTTP_200_OK)
@@ -85,7 +89,8 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
 
         user = get_object_or_404(User, phone_number=phone_number)
         role = serializer.validated_data.get('role')
-        if role.name == 'Barber':
+
+        if role.name.lower() == 'barber':
             WorkingHours.objects.filter(barber=user).delete()
 
         user.roles.remove(role)
@@ -96,19 +101,19 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         user = get_object_or_404(User, telegram_id=telegram_id)
         return Response(UserSerializer(user).data)
     
-class UpdateViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    queryset = User.objects.all()
-    lookup_field = 'telegram_id'
+# class UpdateViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
+#     queryset = User.objects.all()
+#     lookup_field = 'telegram_id'
 
-    def get_object(self):
-        telegram_id = self.kwargs.get('telegram_id')
-        return User.objects.get(telegram_id=telegram_id)
+#     def get_object(self):
+#         telegram_id = self.kwargs.get('telegram_id')
+#         return User.objects.get(telegram_id=telegram_id)
         
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+#     def partial_update(self, request, *args, **kwargs):
+#         return super().partial_update(request, *args, **kwargs)
 
-    def retrieve(self, request):
-        pass
+#     def retrieve(self, request):
+#         pass
 
 class RolesViewSet(viewsets.GenericViewSet):
     queryset = Roles.objects.all()

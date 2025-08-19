@@ -8,10 +8,10 @@ from django.utils import timezone
 class BreakSerializer(serializers.ModelSerializer):
     class Meta:
         model = Break
-        fields = ['id', 'start_time', 'end_time', 'user', 'reason']
+        fields = ['id', 'start_time', 'end_time', 'barber', 'reason']
 
     def validate(self, data):
-        user = data.get('user')
+        user = data.get('barber')
 
         if not user.roles.filter(id = user, name='Barber').exists():
             raise serializers.ValidationError("User must have Barber role to perform this action.")

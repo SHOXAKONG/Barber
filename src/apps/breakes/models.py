@@ -5,7 +5,7 @@ from django.utils import timezone
 class Break(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    barber = models.ForeignKey(User, on_delete=models.CASCADE)
     reason = models.TextField()
 
     @property
@@ -13,4 +13,4 @@ class Break(models.Model):
         return timezone.now() > self.end_time
 
     def __str__(self):
-        return f'{self.user.name}: {self.start_time} + {self.end_time}'
+        return f'{self.barber.first_name}: {self.start_time} - {self.end_time}'
