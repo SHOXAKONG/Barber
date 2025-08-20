@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from decouple import config
-
+from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -141,6 +141,22 @@ AUTH_USER_MODEL = 'user.User'
 #     'DEFAULT_ZOOM': 12,
 # }
 
-TELEGRAM_BOT_API_KEY=config('TELEGRAM_BOT_API_KEY')
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Tashkent"
+
+
+CELERY_BEAT_SCHEDULE = {
+    "update-bookings-every-minute": {
+        "task": "src.apps.booking.tasks.update_completed_bookings",
+        "schedule": crontab(minute="*"),
+    },
+}
+
+
+TELEGRAM_BOT_API_KEY = config('TELEGRAM_BOT_API_KEY')
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

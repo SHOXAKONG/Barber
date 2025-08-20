@@ -13,18 +13,20 @@ from django.shortcuts import get_object_or_404
 from .utils import is_slot_free
 from datetime import date, datetime
 
+
 class WorkingHoursViewSet(viewsets.GenericViewSet):
     queryset = WorkingHours.objects.all()
     serializer_class = WorkingHoursSerializer
 
     @action(detail=False, methods=['get'], url_path='(?P<telegram_id>[^/.]+)')
     def get_barber_working_hours(self, request, telegram_id=None):
-        barber = User.objects.get(telegram_id = telegram_id)
+        barber = User.objects.get(telegram_id=telegram_id)
 
-        working_hours = WorkingHours.objects.filter(barber = barber)
+        working_hours = WorkingHours.objects.filter(barber=barber)
 
-        serializer = WorkingHoursSerializer(working_hours, many = True)
+        serializer = WorkingHoursSerializer(working_hours, many=True)
         return Response(serializer.data)
+
 
 class BookingViewSet(viewsets.GenericViewSet):
     queryset = Booking.objects.all()
@@ -55,7 +57,7 @@ class BookingViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
- 
+
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel_booking(self, request, pk=None):
         try:
@@ -95,7 +97,7 @@ class BookingViewSet(viewsets.GenericViewSet):
             {'success': f"Booking #{booking.id} muvaffaqiyatli bekor qilindi."},
             status=status.HTTP_200_OK
         )
-    
+
     @action(
         detail=False,
         methods=['get'],
@@ -117,7 +119,7 @@ class BookingViewSet(viewsets.GenericViewSet):
 
         if not date or not service_id or not barber_id:
             return Response({"error": "barber_id, date and service_id are required"}, status=400)
-        
+
         barber = get_object_or_404(User, pk=barber_id)
         service = get_object_or_404(Service, pk=service_id)
 
@@ -173,12 +175,19 @@ class BookingViewSet(viewsets.GenericViewSet):
         bookings = Booking.objects.filter(user=user).order_by('-start_time')
         serializer = BookingCreateSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    @action(detail=False, methods=['get'], url_path='get_bookings/(?P<telegram_id>[^/.]+)')
-    def get_bookings(self, request, telegram_id=None):
-        user = get_object_or_404(User, telegram_id=telegram_id)
-        bookings = Booking.objects.filter(barber=user)
+
+    @action(detail=False, methods=['get'],
+            url_path=r'get_bookings/(?P<barber_id>[^/.]+)/(?P<date>\d{4}-\d{2}-\d{2})')
+    def get_bookings(self, request, barber_id=None, date=None):
+        user = get_object_or_404(User, id=barber_id)
+        bookings = Booking.objects.filter(barber=user, start_time__date =date)
         serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='get_bookings_by_id/(?P<booking_id>[^/.]+)')
+    def get_bookings_by_id(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        serializer = BookingSerializer(booking)
         return Response(serializer.data)
 
 # from .serializers import (
