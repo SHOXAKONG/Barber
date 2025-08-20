@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Count, Q
 
+
 class RegisterViewSet(viewsets.GenericViewSet):
     serializer_class = RegisterSerializer
     queryset = User.objects.all()
@@ -20,6 +21,7 @@ class RegisterViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"message": "Registered Successfully"}, status=status.HTTP_201_CREATED)
+
 
 class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.all()
@@ -35,31 +37,31 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @action(methods=['get'], detail=False, url_path=r'by-role/(?P<role_id>[^/.]+)')
     def by_role(self, request, role_id=None):
         role_id = role_id
-        role = get_object_or_404(Roles, id = role_id)
-        if role.name == 'Client' or role.name=='BAN':
+        role = get_object_or_404(Roles, id=role_id)
+        if role.name == 'Client' or role.name == 'BAN':
             queryset = User.objects.annotate(
                 num_roles=Count('roles', distinct=True),
                 total_bookings=Count('bookings', filter=Q(bookings__status='COMPLETED'), distinct=True)
-                ).filter(roles__id=2).filter(
-                    Q(num_roles=1) | (Q(num_roles=2) & Q(roles__id=5))
-                ).distinct()
+            ).filter(roles__id=2).filter(
+                Q(num_roles=1) | (Q(num_roles=2) & Q(roles__id=5))
+            ).distinct()
         else:
-            queryset = User.objects.filter(roles__name = role.name)
+            queryset = User.objects.filter(roles__name=role.name)
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['patch'], url_path=r'add_role/(?P<phone_number>[^/.]+)')
     def add_role(self, request, phone_number=None):
         serializer = self.get_serializer(data=request.data)
@@ -100,7 +102,15 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
     def if_exists(self, request, telegram_id=None):
         user = get_object_or_404(User, telegram_id=telegram_id)
         return Response(UserSerializer(user).data)
-    
+
+    @action(detail=False, methods=['get'], url_path='get_user_data/(?P<pk>[^/.]+)')
+    def get_user_data(self, request, pk=None):
+        user = get_object_or_404(User, id=pk)
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+
+
 # class UpdateViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
 #     queryset = User.objects.all()
 #     lookup_field = 'telegram_id'
@@ -108,7 +118,7 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
 #     def get_object(self):
 #         telegram_id = self.kwargs.get('telegram_id')
 #         return User.objects.get(telegram_id=telegram_id)
-        
+
 #     def partial_update(self, request, *args, **kwargs):
 #         return super().partial_update(request, *args, **kwargs)
 
