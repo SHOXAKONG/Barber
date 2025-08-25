@@ -180,7 +180,7 @@ class BookingViewSet(viewsets.GenericViewSet):
             url_path=r'get_bookings/(?P<barber_id>[^/.]+)/(?P<date>\d{4}-\d{2}-\d{2})')
     def get_bookings(self, request, barber_id=None, date=None):
         user = get_object_or_404(User, id=barber_id)
-        bookings = Booking.objects.filter(barber=user, start_time__date =date)
+        bookings = Booking.objects.filter(barber=user, start_time__date=date)
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)
 
@@ -188,6 +188,13 @@ class BookingViewSet(viewsets.GenericViewSet):
     def get_bookings_by_id(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)
         serializer = BookingSerializer(booking)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='get_active_booking/(?P<phone_number>[^/.]+)')
+    def get_active_booking(self, request, phone_number=None):
+        user = get_object_or_404(User, phone_number=phone_number)
+        book = Booking.objects.filter(user=user, status="CONFIRMED").order_by('-id').first()
+        serializer = BookingSerializer(book)
         return Response(serializer.data)
 
 # from .serializers import (
