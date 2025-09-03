@@ -8,7 +8,7 @@ from src.apps.booking.models import WorkingHours
 class WorkingHoursSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkingHours
-        fields = '__all__'
+        fields = ('id','weekday', 'from_hour', 'to_hour', 'barber')
 
 # class WorkingHoursSerializer(serializers.ModelSerializer):
 #     class Meta:
