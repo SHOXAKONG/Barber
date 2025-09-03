@@ -12,18 +12,18 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip wheel
+RUN pip install --upgrade pip wheel setuptools
 
 COPY ./requirements.txt .
 
 RUN pip install -r requirements.txt && \
-    pip install "gunicorn" "uvicorn[standard]" && \
-    pip install setuptools
+    pip install "gunicorn" "uvicorn[standard]"
 
 COPY . /app
 
 COPY entrypoints.sh /entrypoints.sh
 RUN chmod +x /entrypoints.sh
-ENTRYPOINT ["/entrypoint.sh"]
+
+ENTRYPOINT ["/entrypoints.sh"]
 
 EXPOSE 8000
