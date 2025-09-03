@@ -1,0 +1,4 @@
+from .get_dailys_clients_statistics import WeeklyClientsSerializer
+from .barber_activity import BarberActivitySerializer
+from .service_usage import ServiceUsageSerializer
+from .barber_rating import BarberRatingSerializer

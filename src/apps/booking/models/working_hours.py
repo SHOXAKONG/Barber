@@ -11,7 +11,7 @@ class WorkingHoursQuerySet(models.QuerySet):
             to_datetime=Func(
                 F('date'),
                 F('to_hour'),
-                function='MAKE_TIMESTAMP',  # PostgreSQL
+                function='MAKE_TIMESTAMP',
                 output_field=DateTimeField()
             )
         ).filter(to_datetime__gt=now)
