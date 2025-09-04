@@ -13,7 +13,6 @@ import os
 from pathlib import Path
 from decouple import config
 from celery.schedules import crontab
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,7 +42,7 @@ INSTALLED_APPS = [
     # packages
     'rest_framework',
     'drf_yasg',
-    "django_celery_beat",
+    'django_celery_beat',
 
     # apps
     'src.apps.common',
@@ -53,7 +52,6 @@ INSTALLED_APPS = [
     'src.apps.breakes',
     'src.apps.user',
     'src.apps.statistic',
-
 ]
 
 MIDDLEWARE = [
@@ -145,12 +143,13 @@ AUTH_USER_MODEL = 'user.User'
 #     'DEFAULT_ZOOM': 12,
 # }
 
-CELERY_BROKER_URL = config('CELERY_BROKER_URL')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Tashkent"
+
 
 CELERY_BEAT_SCHEDULE = {
     "update-bookings-every-minute": {
@@ -158,6 +157,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*"),
     },
 }
+
 
 TELEGRAM_BOT_API_KEY = config('TELEGRAM_BOT_API_KEY')
 
