@@ -26,7 +26,7 @@ services:
       web:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "echo 'healthy'"]   # always passes
+      test: ["CMD-SHELL", "echo 'healthy'"]
 
   celery-beat:
     build: .
@@ -41,4 +41,4 @@ services:
       web:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "echo 'healthy'"]   # always passes
+      test: ["CMD-SHELL", "echo 'healthy'"]
