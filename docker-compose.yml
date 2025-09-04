@@ -1,68 +1,42 @@
-version: "3.9"
-
 services:
   web:
     build: .
     entrypoint: /entrypoints.sh
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  db:
-    image: postgres:16
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command: web
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    env_file: [".env"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD", "python", "manage.py", "migrate", "--check"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7
-    volumes:
-      - redis_data:/data
-
   celery:
     build: .
-    command: celery -A src.config worker -l info
-    volumes:
-      - .:/app
-    env_file:
-      - .env
+    entrypoint: []
+    command: ["celery","-A","src.config","worker","-l","info"]
+    volumes: [".:/app"]
+    env_file: [".env"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
-      db:
+      web:
         condition: service_healthy
-      redis:
-        condition: service_started
+    restart: unless-stopped
+    user: "1000:1000"
 
   celery-beat:
     build: .
-    command: celery -A src.config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - .:/app
-    env_file:
-      - .env
+    entrypoint: []
+    command: ["celery","-A","src.config","beat","-l","info",
+              "--scheduler","django_celery_beat.schedulers:DatabaseScheduler"]
+    volumes: [".:/app"]
+    env_file: [".env"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
-      db:
+      web:
         condition: service_healthy
-      redis:
-        condition: service_started
-
-volumes:
-  postgres_data:
-  redis_data:
+    restart: unless-stopped
+    user: "1000:1000"

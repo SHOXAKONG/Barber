@@ -17,7 +17,7 @@ RUN pip install --upgrade pip wheel setuptools
 COPY ./requirements.txt .
 
 RUN pip install -r requirements.txt && \
-    pip install "gunicorn" "uvicorn[standard]"
+    pip install "gunicorn"
 
 COPY . /app
 
