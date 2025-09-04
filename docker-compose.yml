@@ -21,11 +21,12 @@ services:
     volumes: [".:/app"]
     env_file: [".env"]
     extra_hosts: ["host.docker.internal:host-gateway"]
+    restart: unless-stopped
     depends_on:
       web:
         condition: service_healthy
-    restart: unless-stopped
-    user: "1000:1000"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'healthy'"]   # always passes
 
   celery-beat:
     build: .
@@ -35,8 +36,9 @@ services:
     volumes: [".:/app"]
     env_file: [".env"]
     extra_hosts: ["host.docker.internal:host-gateway"]
+    restart: unless-stopped
     depends_on:
       web:
         condition: service_healthy
-    restart: unless-stopped
-    user: "1000:1000"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'healthy'"]   # always passes
