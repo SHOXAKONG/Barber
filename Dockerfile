@@ -26,4 +26,4 @@ RUN chmod +x /entrypoints.sh
 
 ENTRYPOINT ["/entrypoints.sh"]
 
-EXPOSE 8000
+EXPOSE 8001
