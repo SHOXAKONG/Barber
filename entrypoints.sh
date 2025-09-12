@@ -1,9 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "▶️  Running migrations"
-python manage.py migrate --noinput
+echo "⏳ Waiting for database..."
+until python manage.py dbshell -c "SELECT 1;" >/dev/null 2>&1; do
+    echo "Database not ready yet, retrying in 2s..."
+    sleep 2
+done
+echo "✅ Database is ready!"
 
+echo "▶️  Checking and running migrations if needed"
+if python manage.py showmigrations --plan | grep '\[ \]'; then
+    python manage.py migrate --noinput
+else
+    echo "✅ No migrations to apply"
+fi
 
 echo "🔁 Syncing Celery Beat schedules (DB)"
 python manage.py sync_beat || echo "⚠️  'sync_beat' not available or failed; continuing."
@@ -23,8 +33,12 @@ else:
     print("Superuser exists or env not provided; skipping.")
 PY
 
-echo "🧹 Collecting static"
-python manage.py collectstatic --noinput
+echo "🧹 Collecting static files"
+python manage.py collectstatic --noinput || echo "⚠️ Failed to collect static, continuing..."
 
 echo "🚀 Starting Gunicorn"
-exec gunicorn src.config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+exec gunicorn src.config.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers 3 \
+    --timeout 60 \
+    --log-level info
