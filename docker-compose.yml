@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   web:
+    container_name: web_service
     build: .
     entrypoint: /entrypoints.sh
     command: web
