@@ -1,12 +1,13 @@
 version: "3.9"
 
 services:
-  web:
+  barber_web_1:
     build: .
+    container_name: barber_web_1_container
     entrypoint: /entrypoints.sh
     command: web
     ports:
-      - "8001:8000"
+      - "8001:8000"  # host:container
     volumes:
       - .:/app
     env_file:
@@ -19,3 +20,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+networks:
+  default:
+    name: barber_network
