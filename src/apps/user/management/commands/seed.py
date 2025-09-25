@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from src.apps.user.models import User, Roles
 from src.apps.booking.models import Booking
-from src.apps.service.models import Service
+from src.apps.service.models import Service, ServiceType
 
 
 class Command(BaseCommand):
@@ -17,9 +17,10 @@ class Command(BaseCommand):
 
         barber_role, _ = Roles.objects.get_or_create(name="Barber")
         client_role, _ = Roles.objects.get_or_create(name="Client")
+        manager_role, _ = Roles.objects.get_or_create(name="Manager")
 
         barbers_to_create = []
-        for _ in range(2):
+        for _ in range(5):
             phone = f"+998{random.randint(900000000, 999999999)}"
             barbers_to_create.append(User(
                 phone_number=phone,
@@ -36,8 +37,25 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Created {len(barbers)} Barbers"))
 
+        managers_to_create = []
+        for _ in range(2):
+            phone = f"+998{random.randint(900000000, 999999999)}"
+            managers_to_create.append(User(
+                phone_number=phone,
+                first_name=fake.first_name(),
+                telegram_id=random.randint(10000, 99999),
+                language="uz"
+            ))
+        User.objects.bulk_create(managers_to_create, ignore_conflicts=True)
+        managers = list(User.objects.filter(phone_number__in=[m.phone_number for m in managers_to_create]))
+        for m in managers:
+            m.set_password("12345")
+            m.save(update_fields=["password"])
+            m.roles.add(manager_role)
+        self.stdout.write(self.style.SUCCESS(f"Created {len(managers)} Managers"))
+
         clients_to_create = []
-        for _ in range(1000):
+        for _ in range(1000 - 5 - 2):
             phone = f"+998{random.randint(900000000, 999999999)}"
             clients_to_create.append(User(
                 phone_number=phone,
@@ -54,16 +72,36 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Created {len(clients)} Clients"))
 
-        services = list(Service.objects.all())
-        if not services:
-            self.stdout.write(self.style.WARNING("No services found. Please create some services first."))
-            return
+        service_type_names = ["Haircut", "Beard Trim", "Shave", "Coloring", "Styling"]
+
+        all_service_types = []
+        all_services = []
+        for barber in barbers:
+            for st_name in service_type_names:
+                st = ServiceType.objects.create(barber=barber, name=st_name)
+                all_service_types.append(st)
+
+                service = Service(
+                    service_type=st,
+                    name=f"{st_name} by {barber.first_name}",
+                    price=random.randint(50000, 200000),
+                    duration=timedelta(minutes=random.choice([30, 45, 60])),
+                )
+                all_services.append(service)
+
+        Service.objects.bulk_create(all_services)
+        self.stdout.write(self.style.SUCCESS(
+            f"Created {len(all_service_types)} ServiceTypes and {len(all_services)} Services"
+        ))
+
+
+        services = list(Service.objects.select_related("service_type", "service_type__barber"))
 
         bookings_to_create = []
         for _ in range(10000):
-            barber = random.choice(barbers)
             client = random.choice(clients)
             service = random.choice(services)
+            barber = service.service_type.barber
 
             start_time = timezone.now() + timedelta(
                 days=random.randint(1, 10),
@@ -81,5 +119,5 @@ class Command(BaseCommand):
                 status=random.choice(list(Booking.BookingStatus.values))
             ))
 
-        Booking.objects.bulk_create(bookings_to_create)
+        Booking.objects.bulk_create(bookings_to_create, batch_size=1000)
         self.stdout.write(self.style.SUCCESS(f"Created {len(bookings_to_create)} Bookings"))
