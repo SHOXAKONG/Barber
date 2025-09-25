@@ -1,54 +1,30 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "🔃 Waiting for PostgreSQL to be available..."
-python << END
-import time
-import socket
+echo "▶️  Running migrations"
+python manage.py migrate --noinput
 
-s = socket.socket()
-while True:
-    try:
-        s.connect(("db", 5432))
-        s.close()
-        break
-    except socket.error:
-        print("⏳ PostgreSQL is unavailable - sleeping")
-        time.sleep(2)
-END
 
-echo "Running Migrations"
-python manage.py migrate
+echo "🔁 Syncing Celery Beat schedules (DB)"
+python manage.py sync_beat || echo "⚠️  'sync_beat' not available or failed; continuing."
 
-echo "Checking for superuser..."
-python manage.py shell <<EOF
+echo "👤 Checking superuser (optional)"
+python manage.py shell <<'PY'
 from decouple import config
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ImproperlyConfigured
-
 User = get_user_model()
-
-phone_number = config('DJANGO_SUPERUSER_PHONE_NUMBER', default='admin')
-
-try:
-    password = config('DJANGO_SUPERUSER_PASSWORD')
-except ImproperlyConfigured:
-    password = None
-
-if not User.objects.filter(phone_number=phone_number).exists():
-    if not password:
-        print("DJANGO_SUPERUSER_PASSWORD not found in environment or .env file. Cannot create superuser.")
-        exit(1)
-
-    print(f"Creating superuser for phone_number '{phone_number}'")
-    User.objects.create_superuser(phone_number=phone_number, password=password)
-    print("Superuser created successfully.")
+phone = config('DJANGO_SUPERUSER_PHONE_NUMBER', default=None)
+pwd   = config('DJANGO_SUPERUSER_PASSWORD', default=None)
+if phone and pwd and not User.objects.filter(phone_number=phone).exists():
+    print(f"Creating superuser {phone}...")
+    User.objects.create_superuser(phone_number=phone, password=pwd)
+    print("Superuser created.")
 else:
-    print(f"Superuser with email '{phone_number}' already exists. Skipping.")
-EOF
+    print("Superuser exists or env not provided; skipping.")
+PY
 
-echo "Collecting static files"
+echo "🧹 Collecting static"
 python manage.py collectstatic --noinput
 
-echo "Start Gunicorn"
+echo "🚀 Starting Gunicorn"
 exec gunicorn src.config.wsgi:application --bind 0.0.0.0:8000 --workers 3

@@ -1,15 +1,20 @@
-import datetime
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, UserSerializer, UpdateRoleSerializer, RolesSerializer, UserUpdateSerializer
-from src.apps.user.models import User, Roles
+from .serializers import (
+    RegisterSerializer,
+    UserSerializer,
+    UpdateRoleSerializer,
+    RolesSerializer,
+    UserUpdateSerializer,
+    GetRatingSerializer,
+    PostRatingSerializer
+)
+from src.apps.user.models import User, Roles, Rating
 from src.apps.booking.models import WorkingHours
 from django.shortcuts import get_object_or_404
-from drf_yasg.utils import swagger_auto_schema
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg
 
 
 class RegisterViewSet(viewsets.GenericViewSet):
@@ -31,6 +36,8 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
             return UpdateRoleSerializer
         elif self.action == 'partial_update':
             return UserUpdateSerializer
+        elif self.action == 'post_rating':
+            return PostRatingSerializer
         return UserSerializer
 
     def list(self, request):
@@ -109,21 +116,47 @@ class UsersViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.Gene
         serializer = self.get_serializer(user)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"])
+    def barber_avg_rating(self, request):
+        queryset = (
+            User.objects.filter(roles__name="Barber")
+            .annotate(avg_rating=Avg("ratings__rating"))
+            .values("id", "first_name", "avg_rating")
+            .order_by("-avg_rating")
+        )
+        return Response(queryset)
 
+    @action(detail=False, methods=["get"], url_path='barber_avg_rating/(?P<barber_id>\d+)')
+    def barber_avg_rating(self, request, barber_id=None):
+        queryset = (
+            User.objects.filter(roles__name="Barber", id=barber_id)
+            .annotate(avg_rating=Avg("ratings__rating"))
+            .values("id", "first_name", "avg_rating")
+            .order_by("-avg_rating").first()
+        )
+        serializer = GetRatingSerializer(queryset)
+        return Response(serializer.data)
 
-# class UpdateViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
-#     queryset = User.objects.all()
-#     lookup_field = 'telegram_id'
+    @action(detail=False, methods=['get'], url_path='get_rating')
+    def get_rating(self, request):
+        queryset = Rating.objects.select_related('barber', 'client')
+        serializer = GetRatingSerializer(queryset, many=True)
+        return Response(serializer.data)
 
-#     def get_object(self):
-#         telegram_id = self.kwargs.get('telegram_id')
-#         return User.objects.get(telegram_id=telegram_id)
+    @action(detail=False, methods=['post'], url_path='post_rating')
+    def post_rating(self, request):
+        serializer = PostRatingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'message': 'Rating Posted Successfully'})
 
-#     def partial_update(self, request, *args, **kwargs):
-#         return super().partial_update(request, *args, **kwargs)
-
-#     def retrieve(self, request):
-#         pass
+    @action(detail=False, methods=['get'], url_path='get_rating_by_barber_id/(?P<barber_id>\d+)')
+    def get_rating_by_barber(self, request, barber_id=None):
+        ratings = Rating.objects.filter(barber_id=barber_id)
+        if not ratings.exists():
+            return Response({"detail": "No ratings found for this barber"}, status=404)
+        serializer = GetRatingSerializer(ratings, many=True)
+        return Response(serializer.data)
 
 class RolesViewSet(viewsets.GenericViewSet):
     queryset = Roles.objects.all()

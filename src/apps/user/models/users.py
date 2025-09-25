@@ -6,6 +6,7 @@ from django.db import models
 from .roles import Roles
 import re
 from django.core.exceptions import ValidationError
+from .rating import Rating
 
 class UserManager(BaseUserManager):
     def validate_phone_number(self, phone_number):
@@ -63,7 +64,6 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['first_name']
 
     objects = UserManager()
-    rating = models.FloatField(null=True, blank=True)
 
     description = models.TextField(null=True, blank=True)
 

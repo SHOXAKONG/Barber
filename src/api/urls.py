@@ -5,4 +5,5 @@ urlpatterns = [
     path('booking/', include('src.api.booking.urls')),
     path('', include('src.api.breakes.urls')),
     path('', include('src.api.service.urls')),
+    path('', include('src.api.statistic.urls')),
 ]

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # packages
     'rest_framework',
     'drf_yasg',
+    'django_celery_beat',
 
     # apps
     'src.apps.common',
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     'src.apps.service',
     'src.apps.breakes',
     'src.apps.user',
+    'src.apps.statistic',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +62,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    "src.apps.common.middleware.AntiBotMiddleware",
+    "src.apps.common.middleware.ActionLogMiddleware",
 ]
 
 ROOT_URLCONF = 'src.config.urls'
@@ -122,7 +127,7 @@ TIME_ZONE = 'Asia/Tashkent'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -160,3 +165,30 @@ CELERY_BEAT_SCHEDULE = {
 TELEGRAM_BOT_API_KEY = config('TELEGRAM_BOT_API_KEY')
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/app.log"),
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
+    },
+}
+

@@ -13,7 +13,6 @@ class UserSerializer(serializers.ModelSerializer):
                   'language',
                   'photo',
                   'description',
-                  'rating',
                   'default_from_hour',
                   'default_to_hour',
                   'roles',

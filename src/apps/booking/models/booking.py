@@ -7,7 +7,7 @@ from src.apps.common.models import BaseModel
 from src.apps.service.models import Service
 from src.apps.breakes.models import Break
 from .working_hours import WorkingHours
-import pytz
+
 
 class Booking(BaseModel):
     class BookingStatus(models.TextChoices):
@@ -30,7 +30,7 @@ class Booking(BaseModel):
     )
 
     start_time = models.DateTimeField(verbose_name="Boshlanish vaqti")
-    end_time = models.DateTimeField(verbose_name="Tugash vaqti", blank=True)
+    end_time = models.DateTimeField(verbose_name="Tugash vaqti", blank=True, null=True)
 
     status = models.CharField(
         max_length=10,
@@ -52,26 +52,19 @@ class Booking(BaseModel):
     def clean(self):
         super().clean()
 
-        tashkent_tz = pytz.timezone('Asia/Tashkent')
-        now = timezone.now().astimezone(tashkent_tz)
+        now = timezone.now()
 
         weekday = self.start_time.weekday()
         try:
             working_hours = WorkingHours.objects.get(barber=self.barber, weekday=weekday)
         except WorkingHours.DoesNotExist:
-            raise ValidationError("Barber bu soatlarda ishlamaydi.")
+            raise ValidationError("Barber bu kunda ishlamaydi.")
 
-        working_start = timezone.make_aware(
-            datetime.combine(self.start_time.date(), working_hours.from_hour),
-            timezone=tashkent_tz
-        )
-        working_end = timezone.make_aware(
-            datetime.combine(self.start_time.date(), working_hours.to_hour),
-            timezone=tashkent_tz
-        )
+        working_start = datetime.combine(self.start_time.date(), working_hours.from_hour)
+        working_end = datetime.combine(self.start_time.date(), working_hours.to_hour)
 
         if not (working_start <= self.start_time and self.end_time <= working_end):
-            raise ValidationError("Booking must be within the barber's working hours.")
+            raise ValidationError("Bron barberning ish soatlarida bo‘lishi kerak.")
 
         if self.end_time and self.start_time >= self.end_time:
             raise ValidationError("Boshlanish vaqti tugash vaqtidan oldin bo‘lishi kerak.")
@@ -82,25 +75,20 @@ class Booking(BaseModel):
 
         max_allowed_date = now + timedelta(days=30)
         if self.start_time > max_allowed_date:
-            raise ValidationError("30 kundan otib ketdi!")
+            raise ValidationError("30 kundan keyin bron qilib bo‘lmaydi!")
 
         if self.start_time < now:
-            raise ValidationError("O'tmishdagi kunga bron qila olmaysiz.")
+            raise ValidationError("O‘tmishga bron qilib bo‘lmaydi.")
 
-        day_start = timezone.make_aware(
-            datetime.combine(self.start_time.date(), time.min),
-            timezone=tashkent_tz
-        )
-        day_end = timezone.make_aware(
-            datetime.combine(self.start_time.date(), time.max),
-            timezone=tashkent_tz
-        )
+        day_start = datetime.combine(self.start_time.date(), time.min)
+        day_end = datetime.combine(self.start_time.date(), time.max)
 
         breaks = Break.objects.filter(
             barber=self.barber,
             start_time__gte=day_start,
             start_time__lte=day_end
         )
+
         bookings = Booking.objects.filter(
             barber=self.barber,
             start_time__gte=day_start,
@@ -112,8 +100,8 @@ class Booking(BaseModel):
 
         for b in breaks:
             if overlaps(self.start_time, self.end_time, b.start_time, b.end_time):
-                raise ValidationError("Bu vaqt oralig‘i barber break qiladi.")
+                raise ValidationError("Bu vaqtda barber tanaffusda.")
 
         for bk in bookings:
             if overlaps(self.start_time, self.end_time, bk.start_time, bk.end_time):
-                raise ValidationError("Buyoda bron boru.")
+                raise ValidationError("Bu vaqtda allaqachon bron bor.")

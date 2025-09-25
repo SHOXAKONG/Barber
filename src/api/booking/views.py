@@ -1,9 +1,10 @@
-from datetime import date, timedelta
-from django.utils.dateparse import parse_date
-from rest_framework import viewsets, permissions, status
+from datetime import timedelta
+
+from django.db import transaction
+from django.utils.dateparse import parse_time
+from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from src.apps.user.models import User
 from src.apps.booking.models import WorkingHours, Booking
 from src.apps.user.models import User
 from src.apps.service.models import Service
@@ -11,21 +12,78 @@ from src.apps.breakes.models import Break
 from .serializers import WorkingHoursSerializer, BookingCreateSerializer, BookingQuerySerializer, BookingSerializer
 from django.shortcuts import get_object_or_404
 from .utils import is_slot_free
-from datetime import date, datetime
+from datetime import datetime
 
 
-class WorkingHoursViewSet(viewsets.GenericViewSet):
+class WorkingHoursViewSet(
+    mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
+):
     queryset = WorkingHours.objects.all()
     serializer_class = WorkingHoursSerializer
+    lookup_field = "pk"
+    lookup_value_regex = r"\d+"
 
-    @action(detail=False, methods=['get'], url_path='(?P<telegram_id>[^/.]+)')
+    @action(detail=False, methods=["get"], url_path=r"by-telegram/(?P<telegram_id>\d+)")
     def get_barber_working_hours(self, request, telegram_id=None):
-        barber = User.objects.get(telegram_id=telegram_id)
-
-        working_hours = WorkingHours.objects.filter(barber=barber)
-
-        serializer = WorkingHoursSerializer(working_hours, many=True)
+        working_hours = WorkingHours.objects.filter(barber__telegram_id=telegram_id)
+        serializer = self.get_serializer(working_hours, many=True)
         return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["patch"],
+        url_path=r'barber/(?P<barber_id>\d+)/set-hours'  # bosh/oxirida slash yo‘q
+    )
+    def set_uniform_hours(self, request, barber_id=None):
+        try:
+            barber = User.objects.get(pk=barber_id)
+        except User.DoesNotExist:
+            return Response({"detail": "Barber not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Body: {"from_hour": "09:00:00", "to_hour": "19:00:00"}
+        from_raw = request.data.get("from_hour")
+        to_raw   = request.data.get("to_hour")
+
+        from_hour = parse_time(from_raw) if from_raw else None
+        to_hour   = parse_time(to_raw)   if to_raw   else None
+
+        if from_hour is None or to_hour is None:
+            return Response(
+                {"detail": "from_hour va to_hour majburiy (HH:MM yoki HH:MM:SS)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if from_hour >= to_hour:
+            return Response(
+                {"detail": "from_hour to_hour dan kichik bo‘lishi kerak."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            # a) Mavjud yozuvlarni yangilash
+            qs = WorkingHours.objects.select_for_update().filter(barber=barber)
+            qs.update(from_hour=from_hour, to_hour=to_hour)
+
+            # b) Yetishmayotgan weekday'lar uchun yozuv yaratish
+            existing_weekdays = set(qs.values_list("weekday", flat=True))
+            missing = [w for w in range(7) if w not in existing_weekdays]
+
+            to_create = [
+                WorkingHours(
+                    barber=barber,
+                    weekday=w,
+                    from_hour=from_hour,
+                    to_hour=to_hour,
+                )
+                for w in missing
+            ]
+            if to_create:
+                WorkingHours.objects.bulk_create(to_create)
+
+        data = self.get_serializer(
+            self.get_queryset().filter(barber=barber).order_by("weekday"),
+            many=True
+        ).data
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class BookingViewSet(viewsets.GenericViewSet):
